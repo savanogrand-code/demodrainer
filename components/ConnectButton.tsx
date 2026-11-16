@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
+import ActionFlow from "./ActionFlow";
 
 declare global {
   namespace JSX {
@@ -76,6 +77,9 @@ export default function ConnectButton() {
 
       {/* Main AppKit Connect Button */}
       <appkit-button balance="show" />
+
+      {/* Action and verification flow once connected */}
+      {isConnected && <ActionFlow />}
 
       {/* Optional direct TronLink Mobile link if on mobile and not connected */}
       {isMobile && !isConnected && (
