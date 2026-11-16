@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "15.0.4",
+    "next": "^16.4.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "@reown/appkit": "^1.6.8",
@@ -27,6 +27,6 @@
     "@tailwindcss/postcss": "^4.0.0",
     "postcss": "^8",
     "eslint": "^9",
-    "eslint-config-next": "15.0.4"
+    "eslint-config-next": "^16.4.6"
   }
 }
