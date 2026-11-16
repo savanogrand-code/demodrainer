@@ -1,14 +1,10 @@
 // config/index.ts
-// Wagmi adapter + network configuration for Reown AppKit v7
-// ──────────────────────────────────────────────────────────
-// EVM Networks are natively supported.
-// TRON (TRC-20): AppKit does NOT support TRON natively.
-// For TRON, integrate TronLink SDK separately alongside this setup.
-// See: https://developers.tron.network/docs/tronlink-integration
-
+// Multichain configuration: TRON + EVM using Reown AppKit v2
 import { cookieStorage, createStorage } from "@wagmi/core";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+import { TronAdapter } from "@reown/appkit-adapter-tron";
 import {
+  tronMainnet,
   mainnet,
   polygon,
   base,
@@ -17,20 +13,24 @@ import {
   optimism,
 } from "@reown/appkit/networks";
 
-// ── Project ID ────────────────────────────────────────────
-// Get yours free at https://cloud.reown.com
-export const projectId = process.env.NEXT_PUBLIC_PROJECT_ID;
+export const projectId =
+  process.env.NEXT_PUBLIC_PROJECT_ID || "89948ed7574f410ab8abf710b7a28019";
 
-if (!projectId) {
-  throw new Error(
-    "NEXT_PUBLIC_PROJECT_ID is not set. Get one at https://cloud.reown.com"
-  );
-}
+// TRON adapter for TronLink, OKX, Trust, Bitget, etc.
+export const tronAdapter = new TronAdapter();
 
-// ── Supported EVM Networks ────────────────────────────────
-export const networks = [mainnet, polygon, base, bsc, arbitrum, optimism] as const;
+// All supported networks — TRON is the primary network
+export const networks = [
+  tronMainnet,
+  mainnet,
+  polygon,
+  base,
+  bsc,
+  arbitrum,
+  optimism,
+] as const;
 
-// ── Wagmi Adapter (SSR-ready, cookie-based hydration) ─────
+// Wagmi adapter for EVM chains
 export const wagmiAdapter = new WagmiAdapter({
   storage: createStorage({ storage: cookieStorage }),
   ssr: true,

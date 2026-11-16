@@ -4,7 +4,8 @@ import React, { type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiProvider, cookieToInitialState, type Config } from "wagmi";
-import { wagmiAdapter, projectId, networks } from "@/config";
+import { wagmiAdapter, tronAdapter, projectId, networks } from "@/config";
+import { tronMainnet } from "@reown/appkit/networks";
 
 const queryClient = new QueryClient();
 
@@ -15,11 +16,12 @@ const metadata = {
   icons: ["https://assets.reown.com/reown-profile-pic.png"],
 };
 
-// Initialize AppKit without social or email logins (crypto wallets only)
+// Initialize AppKit with TRON as primary network alongside EVM
 createAppKit({
-  adapters: [wagmiAdapter],
-  projectId: projectId!,
+  adapters: [tronAdapter, wagmiAdapter],
   networks,
+  defaultNetwork: tronMainnet,
+  projectId: projectId!,
   metadata,
   themeMode: "dark",
   features: {
