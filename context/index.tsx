@@ -10,29 +10,23 @@ const queryClient = new QueryClient();
 
 const metadata = {
   name: "DemoDrainer",
-  description: "Next-gen DeFi platform",
+  description: "Connect Wallet",
   url: "https://demodrainer.vercel.app",
   icons: ["https://assets.reown.com/reown-profile-pic.png"],
 };
 
+// Initialize AppKit without social or email logins (crypto wallets only)
 createAppKit({
   adapters: [wagmiAdapter],
   projectId: projectId!,
   networks,
   metadata,
   themeMode: "dark",
-  themeVariables: {
-    "--w3m-accent": "#00ff88",
-    "--w3m-color-mix": "#001a0d",
-    "--w3m-color-mix-strength": 40,
-    "--w3m-font-family": "Inter, sans-serif",
-    "--w3m-border-radius-master": "12px",
-  },
   features: {
-    analytics: true,
-    email: true,
-    socials: ["google", "x", "discord"],
-    emailShowWallets: true,
+    analytics: false,
+    email: false,
+    socials: false,
+    emailShowWallets: false,
   },
 });
 
