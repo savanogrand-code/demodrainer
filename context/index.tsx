@@ -1,26 +1,20 @@
 "use client";
 // context/index.tsx
-// AppKit + WagmiProvider + React Query — client-side only
-// ────────────────────────────────────────────────────────
-
 import React, { type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiProvider, cookieToInitialState, type Config } from "wagmi";
 import { wagmiAdapter, projectId, networks } from "@/config";
 
-// ── Query Client ─────────────────────────────────────────
 const queryClient = new QueryClient();
 
-// ── AppKit Metadata ───────────────────────────────────────
 const metadata = {
   name: "DemoDrainer",
   description: "Next-gen DeFi platform",
-  url: typeof window !== "undefined" ? window.location.origin : "",
+  url: "https://demodrainer.vercel.app",
   icons: ["https://assets.reown.com/reown-profile-pic.png"],
 };
 
-// ── Create AppKit Modal (runs once at module level) ───────
 createAppKit({
   adapters: [wagmiAdapter],
   projectId: projectId!,
@@ -40,31 +34,21 @@ createAppKit({
     socials: ["google", "x", "discord"],
     emailShowWallets: true,
   },
-  enableWalletConnect: true,
-  enableInjected: true,
-  enableCoinbase: true,
 });
 
-// ── Context Provider ──────────────────────────────────────
 interface ContextProviderProps {
   children: ReactNode;
   cookies?: string | null;
 }
 
-export default function ContextProvider({
-  children,
-  cookies,
-}: ContextProviderProps) {
+export default function ContextProvider({ children, cookies }: ContextProviderProps) {
   const initialState = cookieToInitialState(
     wagmiAdapter.wagmiConfig as Config,
     cookies
   );
 
   return (
-    <WagmiProvider
-      config={wagmiAdapter.wagmiConfig as Config}
-      initialState={initialState}
-    >
+    <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </WagmiProvider>
   );
