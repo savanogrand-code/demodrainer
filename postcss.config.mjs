@@ -1,0 +1,2 @@
+plugin:
+  - "@tailwindcss/postcss"
