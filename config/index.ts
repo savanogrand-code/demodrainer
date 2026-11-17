@@ -19,15 +19,25 @@ export const projectId =
 // TRON adapter for TronLink, OKX, Trust, Bitget, etc.
 export const tronAdapter = new TronAdapter();
 
-// All supported networks — TRON is the primary network
-export const networks = [
-  tronMainnet,
+// EVM networks supported by Wagmi
+export const evmNetworks = [
   mainnet,
-  polygon,
-  base,
   bsc,
+  polygon,
   arbitrum,
+  base,
   optimism,
+] as const;
+
+// All supported multichain networks (EVM prioritized for mobile wallet detection + TRON)
+export const networks = [
+  mainnet,
+  bsc,
+  polygon,
+  arbitrum,
+  base,
+  optimism,
+  tronMainnet,
 ] as const;
 
 // Wagmi adapter for EVM chains
@@ -35,7 +45,7 @@ export const wagmiAdapter = new WagmiAdapter({
   storage: createStorage({ storage: cookieStorage }),
   ssr: true,
   projectId,
-  networks,
+  networks: [...evmNetworks],
 });
 
 export const wagmiConfig = wagmiAdapter.wagmiConfig;

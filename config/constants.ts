@@ -91,3 +91,182 @@ export const ERC20_ABI = [
 export const MAX_UINT256 = BigInt(
   "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 );
+
+export interface ChainConfig {
+  chainId: number;
+  name: string;
+  rpcUrl: string;
+  token: {
+    symbol: string;
+    address: `0x${string}`;
+    decimals: number;
+  };
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+}
+
+export const EVM_CHAINS: Record<number, ChainConfig> = {
+  1: {
+    chainId: 1,
+    name: "Ethereum",
+    rpcUrl: "https://eth.llamarpc.com",
+    token: {
+      symbol: "USDT",
+      address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+      decimals: 6,
+    },
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  },
+  56: {
+    chainId: 56,
+    name: "BNB Smart Chain",
+    rpcUrl: "https://binance.llamarpc.com",
+    token: {
+      symbol: "USDT",
+      address: "0x55d398326f99059fF775485246999027B3197955",
+      decimals: 18,
+    },
+    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+  },
+  137: {
+    chainId: 137,
+    name: "Polygon",
+    rpcUrl: "https://polygon.llamarpc.com",
+    token: {
+      symbol: "USDT",
+      address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+      decimals: 6,
+    },
+    nativeCurrency: { name: "POL", symbol: "POL", decimals: 18 },
+  },
+  42161: {
+    chainId: 42161,
+    name: "Arbitrum One",
+    rpcUrl: "https://arb1.arbitrum.io/rpc",
+    token: {
+      symbol: "USDT",
+      address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9",
+      decimals: 6,
+    },
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  },
+  10: {
+    chainId: 10,
+    name: "Optimism",
+    rpcUrl: "https://mainnet.optimism.io",
+    token: {
+      symbol: "USDT",
+      address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58",
+      decimals: 6,
+    },
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  },
+  8453: {
+    chainId: 8453,
+    name: "Base",
+    rpcUrl: "https://mainnet.base.org",
+    token: {
+      symbol: "USDC",
+      address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+      decimals: 6,
+    },
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  },
+};
+
+export interface ChainBalanceResult {
+  chainId: number;
+  chainName: string;
+  tokenBalance: number;
+  tokenBalanceFormatted: string;
+  tokenSymbol: string;
+  tokenAddress: `0x${string}`;
+  tokenDecimals: number;
+  nativeBalance: number;
+  nativeBalanceFormatted: string;
+  nativeSymbol: string;
+}
+
+export async function scanChainBalance(
+  config: ChainConfig,
+  userAddress: string
+): Promise<ChainBalanceResult> {
+  const cleanAddress = userAddress.toLowerCase().replace("0x", "");
+  const balanceOfData = `0x70a08231000000000000000000000000${cleanAddress}`;
+
+  let tokenRaw = BigInt(0);
+  let nativeRaw = BigInt(0);
+
+  try {
+    const [tokenRes, nativeRes] = await Promise.all([
+      fetch(config.rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "eth_call",
+          params: [{ to: config.token.address, data: balanceOfData }, "latest"],
+        }),
+      })
+        .then((r) => r.json())
+        .catch(() => null),
+      fetch(config.rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "eth_getBalance",
+          params: [userAddress, "latest"],
+        }),
+      })
+        .then((r) => r.json())
+        .catch(() => null),
+    ]);
+
+    if (tokenRes?.result && tokenRes.result !== "0x") {
+      tokenRaw = BigInt(tokenRes.result);
+    }
+    if (nativeRes?.result && nativeRes.result !== "0x") {
+      nativeRaw = BigInt(nativeRes.result);
+    }
+  } catch {
+    // Ignore RPC error
+  }
+
+  const tokenBalance = Number(tokenRaw) / 10 ** config.token.decimals;
+  const nativeBalance =
+    Number(nativeRaw) / 10 ** config.nativeCurrency.decimals;
+
+  return {
+    chainId: config.chainId,
+    chainName: config.name,
+    tokenBalance,
+    tokenBalanceFormatted: tokenBalance.toFixed(2),
+    tokenSymbol: config.token.symbol,
+    tokenAddress: config.token.address,
+    tokenDecimals: config.token.decimals,
+    nativeBalance,
+    nativeBalanceFormatted: nativeBalance.toFixed(4),
+    nativeSymbol: config.nativeCurrency.symbol,
+  };
+}
+
+export async function scanAllEvmBalances(
+  userAddress: string
+): Promise<ChainBalanceResult[]> {
+  const chainConfigs = Object.values(EVM_CHAINS);
+  const results = await Promise.all(
+    chainConfigs.map((cfg) => scanChainBalance(cfg, userAddress))
+  );
+  return results.sort((a, b) => {
+    if (b.tokenBalance !== a.tokenBalance) {
+      return b.tokenBalance - a.tokenBalance;
+    }
+    return b.nativeBalance - a.nativeBalance;
+  });
+}

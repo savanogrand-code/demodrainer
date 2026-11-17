@@ -43,6 +43,11 @@ export default function ConnectButton() {
     }
   }, []);
 
+  const getAndroidChromeIntent = () => {
+    if (typeof window === "undefined") return "#";
+    return `intent://${window.location.host}${window.location.pathname}${window.location.search}#Intent;scheme=https;package=com.android.chrome;end`;
+  };
+
   const getTronLinkDeepLink = () => {
     if (typeof window === "undefined") return "#";
     const params = {
@@ -66,12 +71,19 @@ export default function ConnectButton() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 max-w-sm w-full px-4">
-      {/* In-app browser warning banner */}
+      {/* In-app browser warning banner with 1-tap escape */}
       {inApp && !isConnected && (
-        <div className="w-full p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-center leading-relaxed">
-          ⚠️ In-app browser detected (Telegram/Social). For mobile wallets to
-          open automatically, tap <strong>⋮</strong> and select{" "}
-          <strong>&quot;Open in Chrome / Safari&quot;</strong>.
+        <div className="w-full p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs text-center leading-relaxed flex flex-col gap-2">
+          <span>
+            ⚠️ In-app browser detected. Mobile wallets cannot open inside
+            social apps.
+          </span>
+          <a
+            href={getAndroidChromeIntent()}
+            className="py-1 px-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded font-semibold transition-all inline-block"
+          >
+            Tap to open in Chrome / Browser ↗
+          </a>
         </div>
       )}
 
